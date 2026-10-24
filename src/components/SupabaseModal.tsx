@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Database, CheckCircle2, AlertTriangle, ExternalLink, Copy, Check } from 'lucide-react';
+import { X, Database, CheckCircle2, AlertTriangle, Copy, Check } from 'lucide-react';
 import { getActiveSupabaseCredentials } from '../lib/supabase';
 
 export const SupabaseModal: React.FC = () => {
@@ -41,18 +41,18 @@ export const SupabaseModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="relative w-full max-w-lg bg-[#0F121E] border border-[#23293F] rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-primary)]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1A2033]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-              <Database className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-[var(--accent-sage)] text-white shadow-sm">
+              <Database className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-white font-display">
+              <h2 className="text-base font-bold font-display">
                 Supabase Cloud Database Sync
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[var(--text-muted)]">
                 Persistent cloud storage for videos, playlists, history, and downloads
               </p>
             </div>
@@ -60,7 +60,7 @@ export const SupabaseModal: React.FC = () => {
 
           <button
             onClick={() => setIsSupabaseModalOpen(false)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#1A2033] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -68,58 +68,59 @@ export const SupabaseModal: React.FC = () => {
 
         {/* Content */}
         <div className="p-6 space-y-4">
-          {/* Status Box */}
           <div
             className={`p-3.5 rounded-xl border flex items-center justify-between text-xs ${
               supabaseStatus.isConnected
-                ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300'
-                : 'bg-[#141926] border-[#20273D] text-slate-300'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                : 'border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]'
             }`}
           >
             <div className="flex items-center gap-2">
               {supabaseStatus.isConnected ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
               ) : (
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
               )}
               <div>
-                <div className="font-semibold text-white">
+                <div className="font-bold text-[var(--text-primary)]">
                   {supabaseStatus.isConnected ? 'Cloud Connected & Synchronized' : 'Local Storage Mode'}
                 </div>
-                <div className="text-[11px] text-slate-400">
+                <div className="text-[11px] text-[var(--text-muted)]">
                   {supabaseStatus.isConnected
                     ? `Live synced with ${supabaseStatus.url}`
-                    : 'All records, favorites, and playlists are saved safely in your browser storage.'}
+                    : 'All records, user accounts, and playlists are safely stored in browser database.'}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleConnect} className="space-y-3">
+          <form onSubmit={handleConnect} autoComplete="off" className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                 Supabase Project URL
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://xyzproject.supabase.co"
-                className="w-full px-3 py-2 bg-[#08090E] border border-[#23293F] rounded-lg text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                className="w-full px-3 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)] focus:outline-none focus:border-[var(--accent-sage)] font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
                 Supabase Anon / Public API Key
               </label>
               <input
                 type="password"
+                autoComplete="new-password"
                 value={anonKey}
                 onChange={(e) => setAnonKey(e.target.value)}
                 placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                className="w-full px-3 py-2 bg-[#08090E] border border-[#23293F] rounded-lg text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                className="w-full px-3 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] text-xs text-[var(--text-primary)] placeholder:[var(--text-muted)] focus:outline-none focus:border-[var(--accent-sage)] font-mono"
               />
             </div>
 
@@ -127,7 +128,7 @@ export const SupabaseModal: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-[var(--accent-sage)] hover:bg-[var(--accent-sage-hover)] text-white text-xs font-semibold shadow-md transition-colors disabled:opacity-50"
               >
                 {isLoading ? 'Connecting...' : 'Connect & Sync'}
               </button>
@@ -137,7 +138,7 @@ export const SupabaseModal: React.FC = () => {
                   type="button"
                   onClick={handleDisconnect}
                   disabled={isLoading}
-                  className="py-2 px-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 text-xs font-medium border border-rose-800/40 transition-colors"
+                  className="py-2.5 px-3 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-medium transition-colors"
                 >
                   Disconnect
                 </button>
@@ -146,21 +147,20 @@ export const SupabaseModal: React.FC = () => {
           </form>
 
           {/* SQL Schema helper */}
-          <div className="pt-3 border-t border-[#1A2033] text-xs text-slate-400 space-y-2">
+          <div className="pt-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-muted)] space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-300">Database Setup (supabase-schema.sql)</span>
+              <span className="font-semibold text-[var(--text-primary)]">Database Setup (supabase-schema.sql)</span>
               <button
                 onClick={copySqlSnippet}
-                className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                className="flex items-center gap-1 text-[11px] text-[var(--accent-sage)] hover:underline font-semibold"
               >
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? 'Copied' : 'Copy Instruction'}</span>
               </button>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              To initialize your Supabase cloud database, open your Supabase dashboard SQL Editor and
-              execute the comprehensive schema included in the project root{' '}
-              <code className="text-indigo-300 font-mono">/supabase-schema.sql</code>.
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+              To initialize your remote cloud database, open your Supabase SQL Editor and execute the schema file in{' '}
+              <code className="text-[var(--accent-sage)] font-mono font-bold">/supabase-schema.sql</code>.
             </p>
           </div>
         </div>

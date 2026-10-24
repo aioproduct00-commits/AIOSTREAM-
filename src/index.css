@@ -5,32 +5,65 @@
     --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+
+    /* Light Mode - Natural Misty Sage */
+    --bg-base: #F3F6F4;
+    --bg-surface: #FFFFFF;
+    --bg-surface-elevated: #E8EFEA;
+    --bg-surface-hover: #DDE7DF;
+    --border-subtle: #D2DFD6;
+    --border-strong: #B6C9BD;
+    --text-primary: #15221B;
+    --text-secondary: #486255;
+    --text-muted: #6C8679;
+    --accent-sage: #386450;
+    --accent-sage-hover: #2C5241;
+    --accent-sage-light: #E0EDE5;
+    --accent-sage-glow: rgba(56, 100, 80, 0.15);
+  }
+
+  .dark {
+    /* Dark Mode - Deep Forest Midnight Sage */
+    --bg-base: #0A0E0C;
+    --bg-surface: #101614;
+    --bg-surface-elevated: #161F1B;
+    --bg-surface-hover: #1D2A24;
+    --border-subtle: #23332C;
+    --border-strong: #2F453B;
+    --text-primary: #EDF4F0;
+    --text-secondary: #9DB4A8;
+    --text-muted: #6F867A;
+    --accent-sage: #53856D;
+    --accent-sage-hover: #63987E;
+    --accent-sage-light: #162B21;
+    --accent-sage-glow: rgba(83, 133, 109, 0.25);
   }
 
   body {
     font-family: var(--font-body);
-    background-color: #08090E;
-    color: #F1F5F9;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
     overflow-x: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
   }
 
-  /* Custom sleek scrollbar */
+  /* Custom sleek scrollbar styled in sage green */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #08090E;
+    background: var(--bg-base);
   }
   ::-webkit-scrollbar-thumb {
-    background: #1E2333;
+    background: var(--border-strong);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #333C57;
+    background: var(--accent-sage);
   }
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Download, Play, Trash2, CheckCircle, Clock, HardDrive, ArrowDownToLine } from 'lucide-react';
+import { Download, Play, Trash2, HardDrive, ArrowDownToLine, FolderCheck, CheckCircle2 } from 'lucide-react';
 import { formatBytes } from '../lib/utils';
 
 export const DownloadsView: React.FC = () => {
@@ -11,28 +11,28 @@ export const DownloadsView: React.FC = () => {
     if (found) {
       playVideo(found);
     } else {
-      showToast('Video source ready in cinema player', 'info');
+      showToast('Video loaded into cinema player', 'info');
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#1A2033]">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in text-[var(--text-primary)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[var(--border-subtle)]">
         <div>
-          <h1 className="text-2xl font-bold font-display text-white tracking-tight flex items-center gap-2.5">
-            <ArrowDownToLine className="w-6 h-6 text-indigo-400" />
-            <span>Downloads & Offline Manager</span>
+          <h1 className="text-2xl font-bold font-display tracking-tight flex items-center gap-2.5">
+            <ArrowDownToLine className="w-6 h-6 text-[var(--accent-sage)]" />
+            <span>My Gallery & Downloads</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Original quality video & audio files downloaded for ad-free offline playback
+          <p className="text-xs text-[var(--text-muted)] mt-1">
+            Original quality MP4 videos and audio files saved to your local gallery for offline ad-free streaming
           </p>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-slate-400">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111422] border border-[#20273D]">
-            <HardDrive className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="font-mono tabular-nums text-slate-200">
-              {downloads.length} file{downloads.length !== 1 ? 's' : ''} stored
+        <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+            <HardDrive className="w-3.5 h-3.5 text-[var(--accent-sage)]" />
+            <span className="font-mono tabular-nums font-semibold text-[var(--text-primary)]">
+              {downloads.length} file{downloads.length !== 1 ? 's' : ''} saved
             </span>
           </div>
         </div>
@@ -40,12 +40,12 @@ export const DownloadsView: React.FC = () => {
 
       {downloads.length === 0 ? (
         <div className="py-24 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#121626] border border-[#20273D] text-slate-500 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--accent-sage-light)] text-[var(--accent-sage)] flex items-center justify-center mx-auto mb-4">
             <Download className="w-7 h-7" />
           </div>
-          <h3 className="text-base font-semibold text-slate-200">No downloads yet</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1 leading-relaxed">
-            Choose any video in AIOSTREAM and click the "Download Original" button to save it in 4K, 1080p, or high-definition audio.
+          <h3 className="text-base font-semibold text-[var(--text-primary)]">No videos in your gallery yet</h3>
+          <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto mt-1 leading-relaxed">
+            Paste any link in the top search bar or click the three-dot menu on any video and select &ldquo;Download MP4 in Gallery&rdquo;.
           </p>
         </div>
       ) : (
@@ -56,27 +56,36 @@ export const DownloadsView: React.FC = () => {
             return (
               <div
                 key={item.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#0D101C] border border-[#1C2136] hover:border-[#28304D] transition-colors"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border transition-colors bg-[var(--bg-surface)] border-[var(--border-subtle)] hover:border-[var(--accent-sage)] shadow-xs"
               >
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="relative w-28 aspect-video rounded-lg overflow-hidden bg-black shrink-0">
+                  <div className="relative w-28 aspect-video rounded-xl overflow-hidden bg-black shrink-0 border border-[var(--border-subtle)]">
                     <img
                       src={item.thumbnailUrl}
                       alt={item.title}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-1 left-1 px-1 rounded bg-black/80 text-[10px] font-mono text-indigo-300">
+                    <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-mono text-[var(--accent-sage)] font-semibold">
                       {item.fileFormat.toUpperCase()}
                     </div>
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-white truncate">{item.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                        {item.title}
+                      </h3>
+                      {item.isGallerySaved && (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--accent-sage)] bg-[var(--accent-sage-light)] px-1.5 py-0.5 rounded">
+                          <FolderCheck className="w-3 h-3" />
+                          <span>Gallery MP4</span>
+                        </span>
+                      )}
+                    </div>
 
-                    {/* Unboxed Metadata (Rule: No pill enclosures) */}
-                    <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                      <span className="text-indigo-400 font-medium">{item.quality}</span>
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-1">
+                      <span className="text-[var(--accent-sage)] font-semibold">{item.quality}</span>
                       <span aria-hidden="true">·</span>
                       <span className="font-mono tabular-nums">{formatBytes(item.fileSizeBytes)}</span>
                       <span aria-hidden="true">·</span>
@@ -85,16 +94,15 @@ export const DownloadsView: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* Progress bar if downloading */}
                     {!isCompleted && (
                       <div className="mt-2 w-full max-w-xs">
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1 font-mono">
-                          <span>Downloading high bitrate stream...</span>
+                        <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] mb-1 font-mono">
+                          <span>Saving to gallery...</span>
                           <span className="tabular-nums">{item.progress}%</span>
                         </div>
-                        <div className="w-full h-1.5 bg-[#181D2E] rounded-full overflow-hidden">
+                        <div className="w-full h-1.5 rounded-full overflow-hidden bg-[var(--bg-surface-elevated)]">
                           <div
-                            className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 transition-all duration-300"
+                            className="h-full bg-[var(--accent-sage)] transition-all duration-300"
                             style={{ width: `${item.progress}%` }}
                           />
                         </div>
@@ -103,22 +111,21 @@ export const DownloadsView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   {isCompleted && (
                     <button
                       onClick={() => handlePlayDownloaded(item.videoId)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-sage)] hover:bg-[var(--accent-sage-hover)] text-white text-xs font-semibold shadow-xs transition-colors"
                     >
                       <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>Play Offline</span>
+                      <span>Play Video</span>
                     </button>
                   )}
 
                   <button
                     onClick={() => removeDownload(item.id)}
-                    className="p-2 rounded-lg bg-[#141826] hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 transition-colors"
-                    title="Remove from download manager"
+                    className="p-2 rounded-xl border border-[var(--border-subtle)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors"
+                    title="Remove from downloads"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

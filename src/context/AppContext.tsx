@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { Video, Category, Playlist, WatchHistoryItem, DownloadRecord, ActiveTab } from '../types';
+import type {
+  Video,
+  Category,
+  Playlist,
+  WatchHistoryItem,
+  DownloadRecord,
+  ActiveTab,
+  User,
+  ThemeMode,
+} from '../types';
 import { INITIAL_VIDEOS, INITIAL_CATEGORIES, INITIAL_PLAYLISTS } from '../lib/seedData';
 import {
   getActiveSupabaseCredentials,
@@ -8,7 +17,12 @@ import {
   insertVideoToSupabase,
   testSupabaseConnection,
 } from '../lib/supabase';
-import { extractYouTubeId, getYouTubeThumbnail, triggerDirectDownload } from '../lib/utils';
+import {
+  extractYouTubeId,
+  getYouTubeThumbnail,
+  triggerDirectDownload,
+  extractVideoMetadataFromFile,
+} from '../lib/utils';
 
 interface ToastNotification {
   id: string;
@@ -16,7 +30,61 @@ interface ToastNotification {
   type: 'success' | 'info' | 'error';
 }
 
+const DEFAULT_ADMIN: User = {
+  id: 'usr-admin-1',
+  name: 'System Admin',
+  email: 'admin@aiostream.com',
+  role: 'admin',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop',
+  status: 'active',
+  bio: 'Primary administrator of AIOSTREAM media servers and catalog.',
+  createdAt: '2026-01-01T00:00:00Z',
+  password: 'Admin@AIOStream2026!',
+};
+
+const INITIAL_USERS: User[] = [
+  DEFAULT_ADMIN,
+  {
+    id: 'usr-alex-rivers',
+    name: 'Alex Rivers',
+    email: 'alex@creator.io',
+    role: 'user',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&h=120&fit=crop',
+    status: 'active',
+    bio: 'Cinematographer and 4K aerial drone enthusiast.',
+    createdAt: '2026-02-10T11:20:00Z',
+    password: 'User@12345!',
+  },
+  {
+    id: 'usr-elena-rostova',
+    name: 'Elena Rostova',
+    email: 'elena.media@stream.net',
+    role: 'user',
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&h=120&fit=crop',
+    status: 'active',
+    bio: 'Sound designer & electronic music producer.',
+    createdAt: '2026-02-18T14:45:00Z',
+    password: 'User@12345!',
+  },
+  {
+    id: 'usr-marcus-thorne',
+    name: 'Marcus Thorne',
+    email: 'marcus@cinema.org',
+    role: 'user',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop',
+    status: 'active',
+    bio: 'Independent filmmaker and open-source VFX artist.',
+    createdAt: '2026-03-01T09:15:00Z',
+    password: 'User@12345!',
+  },
+];
+
 interface AppContextType {
+  // Theme
+  theme: ThemeMode;
+  toggleTheme: () => void;
+
+  // Catalog & Navigation
   videos: Video[];
   categories: Category[];
   activeTab: ActiveTab;
@@ -25,6 +93,8 @@ interface AppContextType {
   setSelectedCategory: (catId: string | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+
+  // Player
   activeVideo: Video | null;
   theaterMode: boolean;
   setTheaterMode: (val: boolean) => void;
@@ -32,19 +102,38 @@ interface AppContextType {
   setMiniPlayer: (val: boolean) => void;
   playVideo: (video: Video, startSeconds?: number) => void;
   closePlayer: () => void;
+
+  // Auth & Users
+  currentUser: User | null;
+  users: User[];
+  login: (email: string, pass: string) => { success: boolean; message: string };
+  signup: (name: string, email: string, pass: string, avatar?: string) => { success: boolean; message: string };
+  logout: () => void;
+  changeAdminPassword: (newPass: string) => { success: boolean; message: string };
+  updateUserStatus: (userId: string, status: 'active' | 'suspended') => void;
+
+  // Collections
   playlists: Playlist[];
   watchHistory: WatchHistoryItem[];
   favorites: string[];
   downloads: DownloadRecord[];
+
+  // Database / Cloud
   supabaseStatus: { url: string; isConnected: boolean };
+  saveSupabaseConfig: (url: string, key: string) => Promise<{ success: boolean; message: string }>;
+
+  // Toasts
   toasts: ToastNotification[];
   showToast: (message: string, type?: 'success' | 'info' | 'error') => void;
   dismissToast: (id: string) => void;
+
+  // Video Management & Uploads
   toggleFavorite: (videoId: string) => void;
   isFavorite: (videoId: string) => boolean;
   updateHistoryProgress: (videoId: string, progressSeconds: number, durationSeconds: number) => void;
   clearHistory: () => void;
   startDownload: (video: Video, quality: string) => void;
+  downloadToGallery: (video: Video, customQuality?: string) => void;
   removeDownload: (downloadId: string) => void;
   addCustomVideo: (data: {
     urlOrId: string;
@@ -53,29 +142,96 @@ interface AppContextType {
     category?: string;
     tags?: string[];
   }) => Promise<Video | null>;
+  uploadUserVideoFile: (
+    file: File,
+    meta: { title: string; description: string; category: string; tags: string[] }
+  ) => Promise<Video>;
+  updateVideo: (id: string, updates: Partial<Video>) => void;
+  deleteVideo: (id: string) => void;
+
+  // Playlists
   createPlaylist: (title: string, description: string) => Playlist;
   addVideoToPlaylist: (playlistId: string, videoId: string) => void;
   removeVideoFromPlaylist: (playlistId: string, videoId: string) => void;
   deletePlaylist: (playlistId: string) => void;
-  saveSupabaseConfig: (url: string, key: string) => Promise<{ success: boolean; message: string }>;
+
+  // Modals & Panels
   isSupabaseModalOpen: boolean;
   setIsSupabaseModalOpen: (open: boolean) => void;
   isAddVideoModalOpen: boolean;
   setIsAddVideoModalOpen: (open: boolean) => void;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (open: boolean) => void;
+  videoDetailsModalVideo: Video | null;
+  setVideoDetailsModalVideo: (v: Video | null) => void;
+  videoEditModalVideo: Video | null;
+  setVideoEditModalVideo: (v: Video | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  VIDEOS: 'aiostream_videos_v1',
-  PLAYLISTS: 'aiostream_playlists_v1',
-  HISTORY: 'aiostream_history_v1',
-  FAVORITES: 'aiostream_favorites_v1',
-  DOWNLOADS: 'aiostream_downloads_v1',
+  THEME: 'aiostream_theme_v2',
+  VIDEOS: 'aiostream_videos_v2',
+  USERS: 'aiostream_users_v2',
+  CURRENT_USER: 'aiostream_current_user_v2',
+  PLAYLISTS: 'aiostream_playlists_v2',
+  HISTORY: 'aiostream_history_v2',
+  FAVORITES: 'aiostream_favorites_v2',
+  DOWNLOADS: 'aiostream_downloads_v2',
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // State initialization with localStorage fallbacks
+  // Theme State
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.THEME);
+      return stored === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.THEME, theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+    } catch (e) {
+      console.warn('Theme update error:', e);
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  // Users State
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.USERS);
+      return stored ? JSON.parse(stored) : INITIAL_USERS;
+    } catch {
+      return INITIAL_USERS;
+    }
+  });
+
+  // Current Logged-in User
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      return stored ? JSON.parse(stored) : DEFAULT_ADMIN; // Default logged in as admin for immediate access
+    } catch {
+      return DEFAULT_ADMIN;
+    }
+  });
+
+  // Videos State
   const [videos, setVideos] = useState<Video[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.VIDEOS);
@@ -138,6 +294,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isAddVideoModalOpen, setIsAddVideoModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [videoDetailsModalVideo, setVideoDetailsModalVideo] = useState<Video | null>(null);
+  const [videoEditModalVideo, setVideoEditModalVideo] = useState<Video | null>(null);
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 5);
@@ -151,7 +310,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Sync state to LocalStorage
+  // Persistence Effects
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    } catch (e) {
+      console.warn('Storage save failed:', e);
+    }
+  }, [users]);
+
+  useEffect(() => {
+    try {
+      if (currentUser) {
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(currentUser));
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      }
+    } catch (e) {
+      console.warn('Storage save failed:', e);
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(videos));
@@ -199,7 +378,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       testSupabaseConnection(creds.url, creds.key).then((res) => {
         setSupabaseStatus({ url: creds.url, isConnected: res.success });
         if (res.success) {
-          // Attempt remote catalog merge
           syncVideosFromSupabase().then((remoteVideos) => {
             if (remoteVideos && remoteVideos.length > 0) {
               setVideos((current) => {
@@ -218,7 +396,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const playVideo = (video: Video) => {
     setActiveVideo(video);
     setMiniPlayer(false);
-    // increment local view count
     setVideos((prev) =>
       prev.map((v) => (v.id === video.id ? { ...v, viewCount: v.viewCount + 1 } : v))
     );
@@ -229,6 +406,88 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setActiveVideo(null);
     setTheaterMode(false);
     setMiniPlayer(false);
+  };
+
+  // Auth Operations
+  const login = (email: string, pass: string): { success: boolean; message: string } => {
+    const cleanEmail = email.trim().toLowerCase();
+    const found = users.find((u) => u.email.toLowerCase() === cleanEmail);
+
+    if (!found) {
+      return { success: false, message: 'No account registered with this email.' };
+    }
+
+    if (found.status === 'suspended') {
+      return { success: false, message: 'This account has been suspended by an administrator.' };
+    }
+
+    if (found.password !== pass) {
+      return { success: false, message: 'Incorrect password. Please verify and try again.' };
+    }
+
+    setCurrentUser(found);
+    showToast(`Welcome back, ${found.name}!`, 'success');
+    return { success: true, message: 'Logged in successfully.' };
+  };
+
+  const signup = (
+    name: string,
+    email: string,
+    pass: string,
+    avatar?: string
+  ): { success: boolean; message: string } => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (users.some((u) => u.email.toLowerCase() === cleanEmail)) {
+      return { success: false, message: 'An account with this email already exists.' };
+    }
+
+    const newUser: User = {
+      id: 'usr-' + Date.now(),
+      name: name.trim(),
+      email: cleanEmail,
+      role: 'user',
+      avatar:
+        avatar ||
+        `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 1000)}?w=120&h=120&fit=crop`,
+      status: 'active',
+      bio: 'AIOSTREAM Community Member & Streamer',
+      createdAt: new Date().toISOString(),
+      password: pass,
+    };
+
+    setUsers((prev) => [...prev, newUser]);
+    setCurrentUser(newUser);
+    showToast(`Account created for ${newUser.name}!`, 'success');
+    return { success: true, message: 'Account registered successfully.' };
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    showToast('Signed out of your account', 'info');
+  };
+
+  const changeAdminPassword = (newPass: string): { success: boolean; message: string } => {
+    if (!newPass || newPass.length < 6) {
+      return { success: false, message: 'New password must be at least 6 characters.' };
+    }
+
+    setUsers((prev) =>
+      prev.map((u) => (u.role === 'admin' ? { ...u, password: newPass } : u))
+    );
+
+    if (currentUser?.role === 'admin') {
+      setCurrentUser((prev) => (prev ? { ...prev, password: newPass } : null));
+    }
+
+    showToast('Admin password updated successfully!', 'success');
+    return { success: true, message: 'Password updated successfully.' };
+  };
+
+  const updateUserStatus = (userId: string, status: 'active' | 'suspended') => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, status } : u))
+    );
+    showToast(`User status set to ${status}`, 'info');
   };
 
   const toggleFavorite = (videoId: string) => {
@@ -257,7 +516,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         completed: durationSeconds > 0 && progressSeconds / durationSeconds > 0.9,
         lastWatchedAt: new Date().toISOString(),
       };
-      return [newItem, ...filtered].slice(0, 50); // Keep latest 50
+      return [newItem, ...filtered].slice(0, 50);
     });
   };
 
@@ -287,6 +546,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       progress: 10,
       downloadUrl: targetUrl,
       timestamp: new Date().toISOString(),
+      isGallerySaved: false,
     };
 
     setDownloads((prev) => [newRecord, ...prev]);
@@ -297,7 +557,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       triggerDirectDownload(targetUrl, filename);
     }
 
-    // Simulate reliable progressive download status
     let currentProgress = 15;
     const interval = setInterval(() => {
       currentProgress += Math.floor(Math.random() * 20) + 15;
@@ -313,7 +572,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           prev.map((d) => (d.id === newDownloadId ? { ...d, progress: currentProgress } : d))
         );
       }
-    }, 700);
+    }, 600);
+  };
+
+  const downloadToGallery = (video: Video, customQuality: string = '1080p Original MP4') => {
+    const cleanTitle = video.title.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 35);
+    const filename = `${cleanTitle}_Gallery.mp4`;
+    const targetUrl = video.downloadUrlOriginal || video.downloadUrl1080p || video.videoUrl;
+
+    const newDownloadId = 'gallery-dl-' + Date.now();
+    const newRecord: DownloadRecord = {
+      id: newDownloadId,
+      videoId: video.id,
+      title: video.title,
+      thumbnailUrl: video.thumbnailUrl,
+      quality: customQuality,
+      fileFormat: 'mp4',
+      fileSizeBytes: video.downloadSizeBytes || 420000000,
+      status: 'downloading',
+      progress: 25,
+      downloadUrl: targetUrl,
+      timestamp: new Date().toISOString(),
+      isGallerySaved: true,
+    };
+
+    setDownloads((prev) => [newRecord, ...prev]);
+    showToast(`Downloading MP4 to your gallery (${filename})...`, 'info');
+
+    // Trigger real download to device
+    triggerDirectDownload(targetUrl, filename);
+
+    // Complete download record in state
+    setTimeout(() => {
+      setDownloads((prev) =>
+        prev.map((d) =>
+          d.id === newDownloadId ? { ...d, progress: 100, status: 'completed' } : d
+        )
+      );
+      showToast('Video saved to Gallery & Downloads!', 'success');
+    }, 1200);
   };
 
   const removeDownload = (downloadId: string) => {
@@ -354,6 +651,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       thumb = '/src/assets/images/hero_aiostream_cinema_1792827556593.jpg';
     }
 
+    const uploader = currentUser || DEFAULT_ADMIN;
+
     const newVideo: Video = {
       id: 'vid-custom-' + Date.now(),
       title: data.title || (ytId ? `Direct YouTube Stream [${ytId}]` : 'Direct Video Stream'),
@@ -365,12 +664,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       youtubeId: ytId || undefined,
       thumbnailUrl: thumb,
       durationSeconds: 300,
-      durationFormatted: '5:00',
+      durationFormatted: '05:00',
       qualityLabel: '1080p Original',
       viewCount: 1,
       likeCount: 1,
-      channelName: 'Custom Import',
-      channelAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
+      channelName: uploader.name,
+      channelAvatar: uploader.avatar,
       categoryId: data.category || 'trailers',
       tags: data.tags && data.tags.length > 0 ? data.tags : ['Imported', 'Direct Stream'],
       downloadUrl1080p: cleanUrl,
@@ -378,18 +677,83 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       downloadUrlOriginal: cleanUrl,
       downloadSizeBytes: 180000000,
       isFeatured: false,
+      uploaderId: uploader.id,
+      uploaderEmail: uploader.email,
+      uploaderName: uploader.name,
+      isUserUpload: true,
+      codec: 'H.264 / AAC',
+      bitrate: '12.5 Mbps',
+      resolution: '1920x1080',
       createdAt: new Date().toISOString(),
     };
 
     setVideos((prev) => [newVideo, ...prev]);
 
-    // Save to Supabase if connected
     if (supabaseStatus.isConnected) {
       insertVideoToSupabase(newVideo);
     }
 
     showToast(`Video "${newVideo.title.substring(0, 30)}" added to catalog!`, 'success');
     return newVideo;
+  };
+
+  const uploadUserVideoFile = async (
+    file: File,
+    meta: { title: string; description: string; category: string; tags: string[] }
+  ): Promise<Video> => {
+    const metaData = await extractVideoMetadataFromFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    const uploader = currentUser || DEFAULT_ADMIN;
+
+    const newVideo: Video = {
+      id: 'upload-' + Date.now(),
+      title: meta.title.trim() || file.name.replace(/\.[^/.]+$/, ''),
+      description: meta.description.trim() || 'Uploaded directly by creator to AIOSTREAM.',
+      videoType: 'direct_mp4',
+      videoUrl: objectUrl,
+      thumbnailUrl: metaData.thumbnailUrl,
+      durationSeconds: metaData.durationSeconds,
+      durationFormatted: metaData.durationFormatted,
+      qualityLabel: '4K Native Upload',
+      viewCount: 1,
+      likeCount: 0,
+      channelName: uploader.name,
+      channelAvatar: uploader.avatar,
+      categoryId: meta.category,
+      tags: meta.tags.length > 0 ? meta.tags : ['User Upload', 'Original Master'],
+      downloadUrl1080p: objectUrl,
+      downloadUrl720p: objectUrl,
+      downloadUrlOriginal: objectUrl,
+      downloadSizeBytes: metaData.fileSizeBytes,
+      isFeatured: false,
+      uploaderId: uploader.id,
+      uploaderEmail: uploader.email,
+      uploaderName: uploader.name,
+      isUserUpload: true,
+      codec: 'H.264 / High Profile',
+      bitrate: '18 Mbps Master',
+      resolution: metaData.resolution,
+      createdAt: new Date().toISOString(),
+    };
+
+    setVideos((prev) => [newVideo, ...prev]);
+    showToast(`Uploaded "${newVideo.title}" to your media studio!`, 'success');
+    return newVideo;
+  };
+
+  const updateVideo = (id: string, updates: Partial<Video>) => {
+    setVideos((prev) =>
+      prev.map((v) => (v.id === id ? { ...v, ...updates } : v))
+    );
+    showToast('Video details updated', 'success');
+  };
+
+  const deleteVideo = (id: string) => {
+    setVideos((prev) => prev.filter((v) => v.id !== id));
+    if (activeVideo?.id === id) {
+      closePlayer();
+    }
+    showToast('Video removed from library', 'info');
   };
 
   const createPlaylist = (title: string, description: string): Playlist => {
@@ -399,6 +763,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       description,
       thumbnailUrl: '/src/assets/images/category_sci_fi_cosmos_1792827556784.jpg',
       videoIds: [],
+      userId: currentUser?.id,
       createdAt: new Date().toISOString(),
     };
     setPlaylists((prev) => [newPl, ...prev]);
@@ -452,7 +817,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       saveSupabaseCredentials(url, key);
       setSupabaseStatus({ url, isConnected: true });
       showToast('Supabase cloud connected successfully!', 'success');
-      // Sync initial data
       const remoteVideos = await syncVideosFromSupabase();
       if (remoteVideos && remoteVideos.length > 0) {
         setVideos((current) => {
@@ -472,6 +836,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider
       value={{
+        theme,
+        toggleTheme,
         videos,
         categories,
         activeTab,
@@ -487,11 +853,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setMiniPlayer,
         playVideo,
         closePlayer,
+        currentUser,
+        users,
+        login,
+        signup,
+        logout,
+        changeAdminPassword,
+        updateUserStatus,
         playlists,
         watchHistory,
         favorites,
         downloads,
         supabaseStatus,
+        saveSupabaseConfig,
         toasts,
         showToast,
         dismissToast,
@@ -500,17 +874,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateHistoryProgress,
         clearHistory,
         startDownload,
+        downloadToGallery,
         removeDownload,
         addCustomVideo,
+        uploadUserVideoFile,
+        updateVideo,
+        deleteVideo,
         createPlaylist,
         addVideoToPlaylist,
         removeVideoFromPlaylist,
         deletePlaylist,
-        saveSupabaseConfig,
         isSupabaseModalOpen,
         setIsSupabaseModalOpen,
         isAddVideoModalOpen,
         setIsAddVideoModalOpen,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+        videoDetailsModalVideo,
+        setVideoDetailsModalVideo,
+        videoEditModalVideo,
+        setVideoEditModalVideo,
       }}
     >
       {children}

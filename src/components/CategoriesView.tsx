@@ -22,25 +22,25 @@ export const CategoriesView: React.FC = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in text-[var(--text-primary)]">
       {/* Category Hero / Header */}
-      <div className="pb-6 border-b border-[#1A2033]">
-        <h1 className="text-2xl font-bold font-display text-white tracking-tight">
+      <div className="pb-6 border-b border-[var(--border-subtle)]">
+        <h1 className="text-2xl font-bold font-display tracking-tight">
           Browse by Genre & Category
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-[var(--text-muted)] mt-1">
           Explore ad-free trailers, 4K nature showcases, live music, and open-source master films
         </p>
       </div>
 
-      {/* Interactive Category Segmented Tabs (Functional filter controls allowed by design constitution) */}
+      {/* Interactive Category Segmented Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto py-4 scrollbar-none">
         <button
           onClick={() => setSelectedCategory(null)}
-          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
+          className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-colors whitespace-nowrap shrink-0 ${
             selectedCategory === null
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'bg-[#111422] text-slate-300 hover:text-white hover:bg-[#1A2035] border border-[#20273D]'
+              ? 'bg-[var(--accent-sage)] text-white shadow-xs'
+              : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)]'
           }`}
         >
           All Genres ({videos.length})
@@ -55,15 +55,15 @@ export const CategoriesView: React.FC = () => {
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-colors whitespace-nowrap shrink-0 ${
                 isSelected
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-[#111422] text-slate-300 hover:text-white hover:bg-[#1A2035] border border-[#20273D]'
+                  ? 'bg-[var(--accent-sage)] text-white shadow-xs'
+                  : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] border border-[var(--border-subtle)]'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{cat.name}</span>
-              <span className="text-[10px] opacity-75 font-mono">({count})</span>
+              <span className="text-[10px] opacity-75 font-mono font-normal">({count})</span>
             </button>
           );
         })}
@@ -71,12 +71,12 @@ export const CategoriesView: React.FC = () => {
 
       {/* Selected Category Description banner */}
       {activeCategoryObj && selectedCategory && (
-        <div className="p-4 rounded-xl bg-[#0D101C] border border-[#1C2136] mb-6 flex items-center justify-between">
+        <div className="p-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] mb-6 flex items-center justify-between shadow-xs">
           <div>
-            <h2 className="text-sm font-semibold text-white">{activeCategoryObj.name}</h2>
-            <p className="text-xs text-slate-400 mt-0.5">{activeCategoryObj.description}</p>
+            <h2 className="text-sm font-bold text-[var(--text-primary)]">{activeCategoryObj.name}</h2>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">{activeCategoryObj.description}</p>
           </div>
-          <span className="text-xs font-mono text-indigo-400 tabular-nums">
+          <span className="text-xs font-mono text-[var(--accent-sage)] font-bold tabular-nums">
             {filteredVideos.length} stream{filteredVideos.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -85,7 +85,7 @@ export const CategoriesView: React.FC = () => {
       {/* Videos Grid */}
       {filteredVideos.length === 0 ? (
         <div className="py-20 text-center">
-          <p className="text-sm text-slate-400">No videos found in this category.</p>
+          <p className="text-sm text-[var(--text-muted)]">No videos found in this category.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,4 +1,16 @@
-export type VideoType = 'youtube' | 'direct_mp4' | 'webm' | 'hls';
+export type VideoType = 'youtube' | 'direct_mp4' | 'webm' | 'hls' | 'local_upload';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  avatar: string;
+  status: 'active' | 'suspended';
+  bio?: string;
+  createdAt: string;
+  password?: string;
+}
 
 export interface Video {
   id: string;
@@ -22,6 +34,13 @@ export interface Video {
   downloadUrlOriginal?: string;
   downloadSizeBytes?: number;
   isFeatured?: boolean;
+  uploaderId?: string;
+  uploaderEmail?: string;
+  uploaderName?: string;
+  isUserUpload?: boolean;
+  codec?: string;
+  bitrate?: string;
+  resolution?: string;
   createdAt: string;
 }
 
@@ -39,6 +58,7 @@ export interface Playlist {
   description: string;
   thumbnailUrl?: string;
   videoIds: string[];
+  userId?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -64,6 +84,7 @@ export interface DownloadRecord {
   progress: number; // 0 to 100
   downloadUrl: string;
   timestamp: string;
+  isGallerySaved?: boolean;
 }
 
 export interface Comment {
@@ -76,7 +97,19 @@ export interface Comment {
   createdAt: string;
 }
 
-export type ActiveTab = 'home' | 'trending' | 'categories' | 'direct-stream' | 'playlists' | 'downloads' | 'history' | 'favorites';
+export type ActiveTab =
+  | 'home'
+  | 'trending'
+  | 'categories'
+  | 'direct-stream'
+  | 'playlists'
+  | 'downloads'
+  | 'history'
+  | 'favorites'
+  | 'my-studio'
+  | 'admin';
+
+export type ThemeMode = 'dark' | 'light';
 
 export interface SupabaseConfig {
   url: string;

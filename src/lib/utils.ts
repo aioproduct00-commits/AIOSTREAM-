@@ -79,3 +79,72 @@ export function triggerDirectDownload(url: string, filename: string) {
   link.click();
   document.body.removeChild(link);
 }
+
+/**
+ * Extracts metadata (duration, resolution, auto-generated thumbnail) from a client-uploaded video file
+ */
+export async function extractVideoMetadataFromFile(file: File): Promise<{
+  durationSeconds: number;
+  durationFormatted: string;
+  thumbnailUrl: string;
+  resolution: string;
+  fileSizeBytes: number;
+}> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.src = URL.createObjectURL(file);
+    video.muted = true;
+    video.playsInline = true;
+
+    video.onloadedmetadata = () => {
+      // Seek to 1 second (or 10% for short videos) to grab a clean frame
+      video.currentTime = Math.min(1.0, video.duration * 0.1);
+    };
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 360;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const thumbData = canvas.toDataURL('image/jpeg', 0.85);
+          const dur = Math.floor(video.duration || 0);
+          const res = `${video.videoWidth}x${video.videoHeight}`;
+
+          resolve({
+            durationSeconds: dur,
+            durationFormatted: formatDuration(dur),
+            thumbnailUrl: thumbData,
+            resolution: res,
+            fileSizeBytes: file.size,
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('Canvas thumbnail capture error:', err);
+      }
+
+      // Fallback
+      resolve({
+        durationSeconds: Math.floor(video.duration || 60),
+        durationFormatted: formatDuration(Math.floor(video.duration || 60)),
+        thumbnailUrl: '/src/assets/images/hero_aiostream_cinema_1792827556593.jpg',
+        resolution: '1920x1080',
+        fileSizeBytes: file.size,
+      });
+    };
+
+    video.onerror = () => {
+      resolve({
+        durationSeconds: 120,
+        durationFormatted: '02:00',
+        thumbnailUrl: '/src/assets/images/hero_aiostream_cinema_1792827556593.jpg',
+        resolution: '1080p',
+        fileSizeBytes: file.size,
+      });
+    };
+  });
+}
