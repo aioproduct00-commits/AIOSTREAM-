@@ -1,0 +1,6 @@
+{
+  "name": "AIOSTREAM - Ad-Free Video Streaming & Direct Download",
+  "description": "Stream and download videos in original quality with zero ads or disturbance. Features YouTube direct streaming, custom cinema player, playlist management, and Supabase cloud sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
