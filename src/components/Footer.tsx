@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Play, Database, Shield, Cloud, FolderDown } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { setActiveTab, setIsSupabaseModalOpen, setIsAddVideoModalOpen, setIsAuthModalOpen } = useApp();
+  const { setActiveTab, setIsSupabaseModalOpen, setIsAddVideoModalOpen, setIsAuthModalOpen, currentUser } = useApp();
 
   return (
     <footer className="mt-20 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs text-[var(--text-muted)]">
@@ -95,15 +95,27 @@ export const Footer: React.FC = () => {
               Admin & Cloud
             </h4>
             <ul className="space-y-1.5 text-xs text-[var(--text-secondary)]">
-              <li>
-                <button
-                  onClick={() => setActiveTab('admin')}
-                  className="hover:text-[var(--text-primary)] transition-colors flex items-center gap-1 text-[var(--accent-sage)] font-semibold"
-                >
-                  <Shield className="w-3 h-3" />
-                  <span>Admin Control Portal</span>
-                </button>
-              </li>
+              {currentUser?.role === 'admin' ? (
+                <li>
+                  <button
+                    onClick={() => setActiveTab('admin')}
+                    className="hover:text-[var(--text-primary)] transition-colors flex items-center gap-1 text-[var(--accent-sage)] font-semibold"
+                  >
+                    <Shield className="w-3 h-3" />
+                    <span>Admin Control Portal</span>
+                  </button>
+                </li>
+              ) : (
+                <li>
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="hover:text-[var(--text-primary)] transition-colors flex items-center gap-1 text-[var(--text-muted)]"
+                  >
+                    <Shield className="w-3 h-3 text-[var(--accent-sage)]" />
+                    <span>Admin Access</span>
+                  </button>
+                </li>
+              )}
               <li>
                 <button
                   onClick={() => setIsAuthModalOpen(true)}

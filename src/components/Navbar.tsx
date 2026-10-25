@@ -256,15 +256,17 @@ export const Navbar: React.FC = () => {
               </button>
             )}
 
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`hover:text-[var(--text-primary)] transition-colors whitespace-nowrap shrink-0 flex items-center gap-1 ${
-                activeTab === 'admin' ? 'text-[var(--accent-sage)] font-bold' : ''
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5 text-[var(--accent-sage)]" />
-              <span>Admin Portal</span>
-            </button>
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`hover:text-[var(--text-primary)] transition-colors whitespace-nowrap shrink-0 flex items-center gap-1 ${
+                  activeTab === 'admin' ? 'text-[var(--accent-sage)] font-bold' : ''
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5 text-[var(--accent-sage)]" />
+                <span>Admin Portal</span>
+              </button>
+            )}
           </nav>
 
           {/* Zone 3: Primary Actions (Theme switch, Account, Stream Any Video) */}
@@ -358,16 +360,18 @@ export const Navbar: React.FC = () => {
                     <span>My Studio & Uploads</span>
                   </button>
 
-                  <button
-                    onClick={() => {
-                      setActiveTab('admin');
-                      setUserDropdownOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl hover:bg-[var(--bg-surface-hover)] text-left font-medium text-[var(--text-secondary)]"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-[var(--accent-sage)]" />
-                    <span>Admin Control Portal</span>
-                  </button>
+                  {currentUser.role === 'admin' && (
+                    <button
+                      onClick={() => {
+                        setActiveTab('admin');
+                        setUserDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-xl hover:bg-[var(--bg-surface-hover)] text-left font-medium text-[var(--text-secondary)]"
+                    >
+                      <Shield className="w-3.5 h-3.5 text-[var(--accent-sage)]" />
+                      <span>Admin Control Portal</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => {
@@ -486,16 +490,18 @@ export const Navbar: React.FC = () => {
           >
             Creator Studio & Uploads
           </button>
-          <button
-            onClick={() => {
-              setActiveTab('admin');
-              setMobileMenuOpen(false);
-            }}
-            className="w-full text-left py-2 px-3 rounded-xl text-xs font-semibold hover:bg-[var(--bg-surface-hover)] text-[var(--accent-sage)] flex items-center gap-1.5"
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>Admin Control Portal</span>
-          </button>
+          {currentUser?.role === 'admin' && (
+            <button
+              onClick={() => {
+                setActiveTab('admin');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left py-2 px-3 rounded-xl text-xs font-semibold hover:bg-[var(--bg-surface-hover)] text-[var(--accent-sage)] flex items-center gap-1.5"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Admin Control Portal</span>
+            </button>
+          )}
         </div>
       )}
     </header>

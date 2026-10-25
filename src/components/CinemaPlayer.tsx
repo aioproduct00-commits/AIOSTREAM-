@@ -12,7 +12,6 @@ import {
   ListPlus,
   Share2,
   X,
-  ExternalLink,
   ChevronDown,
   MoreVertical,
   Info,
@@ -20,6 +19,10 @@ import {
   Check,
   Radio,
   FolderDown,
+  SkipForward,
+  SkipBack,
+  Repeat,
+  ListMusic,
 } from 'lucide-react';
 import { formatViews, formatDuration, formatBytes } from '../lib/utils';
 import type { Video } from '../types';
@@ -44,6 +47,12 @@ export const CinemaPlayer: React.FC = () => {
     currentUser,
     setVideoDetailsModalVideo,
     setVideoEditModalVideo,
+    activePlaylist,
+    activePlaylistIndex,
+    isPlaylistAutoPlay,
+    playNextInPlaylist,
+    playPreviousInPlaylist,
+    togglePlaylistAutoPlay,
   } = useApp();
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,6 +67,7 @@ export const CinemaPlayer: React.FC = () => {
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const [showThreeDotMenu, setShowThreeDotMenu] = useState(false);
+  const [showPlaylistQueue, setShowPlaylistQueue] = useState(false);
   const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
   const [showFullDescription, setShowFullDescription] = useState(false);
 
@@ -74,7 +84,14 @@ export const CinemaPlayer: React.FC = () => {
     (currentUser &&
       (currentUser.id === activeVideo.uploaderId || currentUser.email === activeVideo.uploaderEmail));
 
-  // Suggested videos
+  // If a playlist is active, get all videos in the playlist
+  const playlistVideos = activePlaylist
+    ? activePlaylist.videoIds
+        .map((id) => videos.find((v) => v.id === id))
+        .filter((v): v is Video => Boolean(v))
+    : [];
+
+  // Suggested videos when no playlist is active
   const upNextVideos = videos
     .filter((v) => v.id !== activeVideo.id)
     .sort((a, b) => (a.categoryId === activeVideo.categoryId ? -1 : 1))
@@ -99,6 +116,14 @@ export const CinemaPlayer: React.FC = () => {
       setCurrentTime(cur);
       setDuration(dur);
       updateHistoryProgress(activeVideo.id, cur, dur);
+    }
+  };
+
+  const handleVideoEnded = () => {
+    setIsPlaying(false);
+    if (activePlaylist && isPlaylistAutoPlay) {
+      showToast('Advancing to next video in playlist...', 'info');
+      playNextInPlaylist();
     }
   };
 
@@ -160,8 +185,8 @@ export const CinemaPlayer: React.FC = () => {
 
   const handleShare = () => {
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(activeVideo.videoUrl);
-      showToast('Stream link copied to clipboard!', 'success');
+      navigator.clipboard.writeText(window.location.origin);
+      showToast('Ad-free direct stream link copied!', 'success');
     }
   };
 
@@ -186,8 +211,67 @@ export const CinemaPlayer: React.FC = () => {
         theaterMode ? 'px-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4'
       }`}
     >
+      {/* LIVE PLAYLIST BANNER (Visible when playing a full playlist live on site) */}
+      {activePlaylist && (
+        <div className="mb-2 p-2.5 px-4 rounded-2xl bg-[var(--accent-sage-light)]/40 border border-[var(--accent-sage)]/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="flex items-center gap-1.5 font-bold text-[var(--accent-sage)]">
+              <ListMusic className="w-4 h-4 text-[var(--accent-sage)] animate-pulse" />
+              <span>LIVE PLAYLIST:</span>
+            </span>
+            <span className="font-semibold text-[var(--text-primary)] truncate">
+              {activePlaylist.title}
+            </span>
+            <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-[var(--accent-sage)] text-white font-bold tabular-nums">
+              {activePlaylistIndex + 1} of {activePlaylist.videoIds.length}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={playPreviousInPlaylist}
+              disabled={activePlaylistIndex === 0}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-primary)] disabled:opacity-40 transition-colors"
+              title="Previous Video"
+            >
+              <SkipBack className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-[11px]">Previous</span>
+            </button>
+
+            <button
+              onClick={playNextInPlaylist}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[var(--accent-sage)] hover:bg-[var(--accent-sage-hover)] text-white font-semibold shadow-xs transition-colors"
+              title="Next Video"
+            >
+              <span className="text-[11px]">Next Video</span>
+              <SkipForward className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={togglePlaylistAutoPlay}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
+                isPlaylistAutoPlay
+                  ? 'border-[var(--accent-sage)] bg-[var(--accent-sage-light)] text-[var(--accent-sage)] font-semibold'
+                  : 'border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-muted)]'
+              }`}
+              title="Auto-advance to next video when finished"
+            >
+              <Repeat className="w-3 h-3" />
+              <span>Auto-advance: {isPlaylistAutoPlay ? 'ON' : 'OFF'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowPlaylistQueue(!showPlaylistQueue)}
+              className="px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-[var(--text-secondary)] text-[11px] font-medium"
+            >
+              {showPlaylistQueue ? 'Hide Queue' : 'View Queue'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Bar inside Player */}
-      <div className="flex items-center justify-between py-2 px-3 bg-[var(--bg-surface-elevated)] border-b border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
+      <div className="flex items-center justify-between py-2 px-3 bg-[var(--bg-surface-elevated)] border-b border-[var(--border-subtle)] text-xs text-[var(--text-muted)] rounded-t-xl">
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-semibold text-[var(--text-primary)] truncate max-w-md">
             {activeVideo.title}
@@ -223,7 +307,7 @@ export const CinemaPlayer: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Player Container */}
+      {/* Main Player Stage */}
       <div
         className={`grid gap-6 ${
           theaterMode ? 'grid-cols-1 max-w-7xl mx-auto px-4 sm:px-6 mt-4' : 'lg:grid-cols-3 mt-2'
@@ -233,14 +317,14 @@ export const CinemaPlayer: React.FC = () => {
         <div className={theaterMode ? 'w-full' : 'lg:col-span-2'}>
           <div className="relative aspect-video w-full bg-black rounded-2xl overflow-hidden shadow-2xl border border-[var(--border-subtle)] group">
             {isDirectVideo ? (
-              // HTML5 Direct Video Player with Sage accents
+              // HTML5 Direct Video Player
               <div className="relative w-full h-full flex items-center justify-center bg-black">
                 <video
                   ref={videoRef}
                   src={activeVideo.videoUrl}
                   className="w-full h-full object-contain"
                   onTimeUpdate={handleTimeUpdate}
-                  onEnded={() => setIsPlaying(false)}
+                  onEnded={handleVideoEnded}
                   playsInline
                 />
 
@@ -342,16 +426,17 @@ export const CinemaPlayer: React.FC = () => {
             {/* Interactive Actions Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-[var(--border-subtle)]">
               <div className="flex flex-wrap items-center gap-2">
-                {/* PRIMARY ACTION: Download MP4 in Gallery */}
+                {/* DIRECT VIDEO DOWNLOAD TO GALLERY (PROHIBITS YOUTUBE REDIRECTION) */}
                 <button
                   onClick={() => downloadToGallery(activeVideo, '1080p Original MP4')}
                   className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-[var(--accent-sage)] hover:bg-[var(--accent-sage-hover)] active:scale-[0.99] rounded-xl shadow-md transition-all"
+                  title="Download direct MP4 video file to your gallery (no redirect to YouTube)"
                 >
                   <FolderDown className="w-4 h-4" />
                   <span>Download MP4 in Gallery</span>
                 </button>
 
-                {/* Multi-Quality Download Menu */}
+                {/* Multi-Quality Direct Download Menu */}
                 <div className="relative">
                   <button
                     onClick={() => setShowDownloadMenu(!showDownloadMenu)}
@@ -365,7 +450,7 @@ export const CinemaPlayer: React.FC = () => {
                   {showDownloadMenu && (
                     <div className="absolute left-0 mt-2 w-64 rounded-xl border shadow-2xl p-2 z-50 bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-primary)] animate-in fade-in">
                       <div className="px-3 py-1 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                        Select Stream Format
+                        Direct File Download (No Redirects)
                       </div>
 
                       <button
@@ -377,7 +462,7 @@ export const CinemaPlayer: React.FC = () => {
                       >
                         <div>
                           <div className="font-semibold text-[var(--text-primary)]">4K UHD Master</div>
-                          <div className="text-[10px] text-[var(--text-muted)]">Original High Bitrate · MP4</div>
+                          <div className="text-[10px] text-[var(--text-muted)]">Direct MP4 File</div>
                         </div>
                         <span className="text-[11px] font-mono text-[var(--accent-sage)]">
                           {formatBytes(activeVideo.downloadSizeBytes || 450000000)}
@@ -393,7 +478,7 @@ export const CinemaPlayer: React.FC = () => {
                       >
                         <div>
                           <div className="font-semibold text-[var(--text-primary)]">1080p Full HD</div>
-                          <div className="text-[10px] text-[var(--text-muted)]">High Speed · MP4</div>
+                          <div className="text-[10px] text-[var(--text-muted)]">Direct MP4 File</div>
                         </div>
                         <span className="text-[11px] font-mono text-[var(--accent-sage)]">
                           {formatBytes(Math.floor((activeVideo.downloadSizeBytes || 450000000) * 0.6))}
@@ -409,7 +494,7 @@ export const CinemaPlayer: React.FC = () => {
                       >
                         <div>
                           <div className="font-semibold text-[var(--text-primary)]">Audio Track Only</div>
-                          <div className="text-[10px] text-[var(--text-muted)]">MP3 · 320 kbps Studio</div>
+                          <div className="text-[10px] text-[var(--text-muted)]">Direct MP3 File</div>
                         </div>
                         <span className="text-[11px] font-mono text-emerald-500">
                           {formatBytes(15000000)}
@@ -490,7 +575,7 @@ export const CinemaPlayer: React.FC = () => {
                   <span className="hidden sm:inline">Share</span>
                 </button>
 
-                {/* THREE-DOT MENU BUTTON ON PLAYER */}
+                {/* Three-Dot Menu */}
                 <div className="relative">
                   <button
                     onClick={() => setShowThreeDotMenu(!showThreeDotMenu)}
@@ -529,18 +614,6 @@ export const CinemaPlayer: React.FC = () => {
                   )}
                 </div>
               </div>
-
-              {activeVideo.youtubeId && (
-                <a
-                  href={`https://www.youtube.com/watch?v=${activeVideo.youtubeId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                >
-                  <span>Open YouTube</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
             </div>
 
             {/* Video Description Box */}
@@ -574,50 +647,84 @@ export const CinemaPlayer: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Sidebar: Up Next Queue */}
+        {/* Right Sidebar: Active Playlist Queue OR Up Next */}
         <div className={theaterMode ? 'w-full mt-6' : 'lg:col-span-1'}>
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-[var(--border-subtle)]">
-              <h3 className="text-xs font-bold text-[var(--text-primary)] tracking-wider uppercase font-display">
-                Up Next (Zero Ads)
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-[var(--text-primary)] tracking-wider uppercase font-display">
+                  {activePlaylist ? `Playlist Queue (${playlistVideos.length})` : 'Up Next (Zero Ads)'}
+                </h3>
+              </div>
               <span className="text-[11px] text-[var(--text-muted)]">Continuous Stream</span>
             </div>
 
             <div className="space-y-3">
-              {upNextVideos.map((video) => (
-                <div
-                  key={video.id}
-                  onClick={() => playVideo(video)}
-                  className="flex gap-3 group cursor-pointer p-1.5 rounded-xl hover:bg-[var(--bg-surface-hover)] transition-colors"
-                >
-                  <div className="relative w-28 aspect-video rounded-lg overflow-hidden bg-black shrink-0 border border-[var(--border-subtle)]">
-                    <img
-                      src={video.thumbnailUrl}
-                      alt={video.title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                    />
-                    <span className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/85 text-[10px] font-mono tabular-nums text-white">
-                      {video.durationFormatted}
-                    </span>
-                  </div>
+              {(activePlaylist ? playlistVideos : upNextVideos).map((video, idx) => {
+                const isCurrentPlaying = video.id === activeVideo.id;
 
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-sage)] line-clamp-2 transition-colors">
-                      {video.title}
-                    </h4>
-                    <p className="text-[11px] text-[var(--text-muted)] truncate mt-1">
-                      {video.channelName}
-                    </p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)] mt-0.5">
-                      <span className="font-mono tabular-nums">{formatViews(video.viewCount)} views</span>
-                      <span aria-hidden="true">·</span>
-                      <span className="text-[var(--accent-sage)] font-semibold">{video.qualityLabel}</span>
+                return (
+                  <div
+                    key={video.id}
+                    onClick={() => {
+                      if (activePlaylist) {
+                        playVideo(video);
+                      } else {
+                        playVideo(video);
+                      }
+                    }}
+                    className={`flex gap-3 group cursor-pointer p-2 rounded-xl transition-all ${
+                      isCurrentPlaying
+                        ? 'bg-[var(--accent-sage-light)]/60 border border-[var(--accent-sage)]/40 shadow-xs'
+                        : 'hover:bg-[var(--bg-surface-hover)] border border-transparent'
+                    }`}
+                  >
+                    <div className="relative w-28 aspect-video rounded-lg overflow-hidden bg-black shrink-0 border border-[var(--border-subtle)]">
+                      <img
+                        src={video.thumbnailUrl}
+                        alt={video.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                      <span className="absolute bottom-1 right-1 px-1 py-0.5 rounded bg-black/85 text-[10px] font-mono tabular-nums text-white">
+                        {video.durationFormatted}
+                      </span>
+                      {isCurrentPlaying && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Radio className="w-5 h-5 text-white animate-pulse" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {activePlaylist && (
+                          <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                            #{idx + 1}
+                          </span>
+                        )}
+                        <h4
+                          className={`text-xs font-semibold line-clamp-2 transition-colors ${
+                            isCurrentPlaying
+                              ? 'text-[var(--accent-sage)] font-bold'
+                              : 'text-[var(--text-primary)] group-hover:text-[var(--accent-sage)]'
+                          }`}
+                        >
+                          {video.title}
+                        </h4>
+                      </div>
+                      <p className="text-[11px] text-[var(--text-muted)] truncate mt-1">
+                        {video.channelName}
+                      </p>
+                      <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)] mt-0.5">
+                        <span className="font-mono tabular-nums">{formatViews(video.viewCount)} views</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="text-[var(--accent-sage)] font-semibold">{video.qualityLabel}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

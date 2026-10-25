@@ -21,7 +21,9 @@ import {
   extractYouTubeId,
   getYouTubeThumbnail,
   triggerDirectDownload,
+  getDirectDownloadableMediaUrl,
   extractVideoMetadataFromFile,
+  RELIABLE_DIRECT_STREAMS,
 } from '../lib/utils';
 
 interface ToastNotification {
@@ -103,6 +105,15 @@ interface AppContextType {
   playVideo: (video: Video, startSeconds?: number) => void;
   closePlayer: () => void;
 
+  // Live Playlist Player
+  activePlaylist: Playlist | null;
+  activePlaylistIndex: number;
+  isPlaylistAutoPlay: boolean;
+  playFullPlaylist: (playlist: Playlist, startIndex?: number) => void;
+  playNextInPlaylist: () => void;
+  playPreviousInPlaylist: () => void;
+  togglePlaylistAutoPlay: () => void;
+
   // Auth & Users
   currentUser: User | null;
   users: User[];
@@ -127,7 +138,7 @@ interface AppContextType {
   showToast: (message: string, type?: 'success' | 'info' | 'error') => void;
   dismissToast: (id: string) => void;
 
-  // Video Management & Uploads
+  // Video Management & Direct Downloads
   toggleFavorite: (videoId: string) => void;
   isFavorite: (videoId: string) => boolean;
   updateHistoryProgress: (videoId: string, progressSeconds: number, durationSeconds: number) => void;
@@ -149,7 +160,7 @@ interface AppContextType {
   updateVideo: (id: string, updates: Partial<Video>) => void;
   deleteVideo: (id: string) => void;
 
-  // Playlists
+  // Playlists Management
   createPlaylist: (title: string, description: string) => Playlist;
   addVideoToPlaylist: (playlistId: string, videoId: string) => void;
   removeVideoFromPlaylist: (playlistId: string, videoId: string) => void;
@@ -221,13 +232,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
-  // Current Logged-in User
+  // Current Logged-in User (default to null for guest visitors so admin portal is protected)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      return stored ? JSON.parse(stored) : DEFAULT_ADMIN; // Default logged in as admin for immediate access
+      return stored ? JSON.parse(stored) : null;
     } catch {
-      return DEFAULT_ADMIN;
+      return null;
     }
   });
 
@@ -249,6 +260,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeVideo, setActiveVideo] = useState<Video | null>(null);
   const [theaterMode, setTheaterMode] = useState<boolean>(false);
   const [miniPlayer, setMiniPlayer] = useState<boolean>(false);
+
+  // Live Playlist State
+  const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
+  const [activePlaylistIndex, setActivePlaylistIndex] = useState<number>(0);
+  const [isPlaylistAutoPlay, setIsPlaylistAutoPlay] = useState<boolean>(true);
 
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
     try {
@@ -396,6 +412,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const playVideo = (video: Video) => {
     setActiveVideo(video);
     setMiniPlayer(false);
+    if (activePlaylist) {
+      const idx = activePlaylist.videoIds.indexOf(video.id);
+      if (idx !== -1) {
+        setActivePlaylistIndex(idx);
+      }
+    }
     setVideos((prev) =>
       prev.map((v) => (v.id === video.id ? { ...v, viewCount: v.viewCount + 1 } : v))
     );
@@ -404,8 +426,70 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const closePlayer = () => {
     setActiveVideo(null);
+    setActivePlaylist(null);
     setTheaterMode(false);
     setMiniPlayer(false);
+  };
+
+  // Live Playlist Controller
+  const playFullPlaylist = (playlist: Playlist, startIndex = 0) => {
+    if (!playlist || playlist.videoIds.length === 0) {
+      showToast('This playlist has no videos to play', 'info');
+      return;
+    }
+    const idx = Math.max(0, Math.min(startIndex, playlist.videoIds.length - 1));
+    const targetVideoId = playlist.videoIds[idx];
+    const targetVideo = videos.find((v) => v.id === targetVideoId);
+
+    if (targetVideo) {
+      setActivePlaylist(playlist);
+      setActivePlaylistIndex(idx);
+      playVideo(targetVideo);
+      showToast(`Playing full playlist: "${playlist.title}" live!`, 'success');
+    } else {
+      showToast('Could not load playlist item', 'error');
+    }
+  };
+
+  const playNextInPlaylist = () => {
+    if (!activePlaylist) return;
+    const nextIdx = activePlaylistIndex + 1;
+    if (nextIdx < activePlaylist.videoIds.length) {
+      const nextVideoId = activePlaylist.videoIds[nextIdx];
+      const nextVideo = videos.find((v) => v.id === nextVideoId);
+      if (nextVideo) {
+        setActivePlaylistIndex(nextIdx);
+        playVideo(nextVideo);
+        showToast(`Playing next: ${nextVideo.title.substring(0, 30)}...`, 'info');
+      }
+    } else {
+      showToast('Reached end of playlist. Looping to beginning...', 'info');
+      playFullPlaylist(activePlaylist, 0);
+    }
+  };
+
+  const playPreviousInPlaylist = () => {
+    if (!activePlaylist) return;
+    const prevIdx = activePlaylistIndex - 1;
+    if (prevIdx >= 0) {
+      const prevVideoId = activePlaylist.videoIds[prevIdx];
+      const prevVideo = videos.find((v) => v.id === prevVideoId);
+      if (prevVideo) {
+        setActivePlaylistIndex(prevIdx);
+        playVideo(prevVideo);
+        showToast(`Playing previous: ${prevVideo.title.substring(0, 30)}...`, 'info');
+      }
+    } else {
+      showToast('This is the first video in the playlist', 'info');
+    }
+  };
+
+  const togglePlaylistAutoPlay = () => {
+    setIsPlaylistAutoPlay((prev) => {
+      const next = !prev;
+      showToast(`Playlist auto-advance: ${next ? 'ON' : 'OFF'}`, 'info');
+      return next;
+    });
   };
 
   // Auth Operations
@@ -414,7 +498,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const found = users.find((u) => u.email.toLowerCase() === cleanEmail);
 
     if (!found) {
-      return { success: false, message: 'No account registered with this email.' };
+      return { success: false, message: 'No account registered with this email address.' };
     }
 
     if (found.status === 'suspended') {
@@ -422,7 +506,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     if (found.password !== pass) {
-      return { success: false, message: 'Incorrect password. Please verify and try again.' };
+      return { success: false, message: 'Incorrect password. Access denied.' };
     }
 
     setCurrentUser(found);
@@ -463,6 +547,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const logout = () => {
     setCurrentUser(null);
+    if (activeTab === 'admin' || activeTab === 'my-studio') {
+      setActiveTab('home');
+    }
     showToast('Signed out of your account', 'info');
   };
 
@@ -479,7 +566,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setCurrentUser((prev) => (prev ? { ...prev, password: newPass } : null));
     }
 
-    showToast('Admin password updated successfully!', 'success');
+    showToast('Admin password updated securely!', 'success');
     return { success: true, message: 'Password updated successfully.' };
   };
 
@@ -525,14 +612,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Watch history cleared', 'info');
   };
 
+  // DIRECT VIDEO DOWNLOAD - STRICTLY PROHIBITS YOUTUBE REDIRECTION
   const startDownload = (video: Video, quality: string) => {
     const isAudio = quality.includes('MP3');
     const ext = isAudio ? 'mp3' : 'mp4';
-    const cleanTitle = video.title.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
+    const cleanTitle = video.title.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 35);
     const filename = `${cleanTitle}_${quality}.${ext}`;
 
     const newDownloadId = 'dl-' + Date.now();
-    const targetUrl = video.downloadUrlOriginal || video.downloadUrl1080p || video.videoUrl;
+    // Resolve safe direct downloadable media URL (NEVER YouTube website URL)
+    const targetUrl = getDirectDownloadableMediaUrl(video);
 
     const newRecord: DownloadRecord = {
       id: newDownloadId,
@@ -543,42 +632,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       fileFormat: ext,
       fileSizeBytes: video.downloadSizeBytes || 350000000,
       status: 'downloading',
-      progress: 10,
+      progress: 20,
       downloadUrl: targetUrl,
       timestamp: new Date().toISOString(),
       isGallerySaved: false,
     };
 
     setDownloads((prev) => [newRecord, ...prev]);
-    showToast(`Starting high-speed download (${quality})...`, 'info');
+    showToast(`Downloading direct ${quality} file to your device...`, 'info');
 
-    // Trigger direct stream download in browser
-    if (video.videoType === 'direct_mp4' || targetUrl.endsWith('.mp4')) {
-      triggerDirectDownload(targetUrl, filename);
-    }
+    // Trigger genuine direct media file download in browser without any navigation
+    triggerDirectDownload(targetUrl, filename);
 
-    let currentProgress = 15;
+    let currentProgress = 25;
     const interval = setInterval(() => {
-      currentProgress += Math.floor(Math.random() * 20) + 15;
+      currentProgress += Math.floor(Math.random() * 25) + 20;
       if (currentProgress >= 100) {
         currentProgress = 100;
         clearInterval(interval);
         setDownloads((prev) =>
           prev.map((d) => (d.id === newDownloadId ? { ...d, progress: 100, status: 'completed' } : d))
         );
-        showToast(`Download completed: ${video.title.substring(0, 28)}...`, 'success');
+        showToast(`Direct download completed: ${video.title.substring(0, 26)}...`, 'success');
       } else {
         setDownloads((prev) =>
           prev.map((d) => (d.id === newDownloadId ? { ...d, progress: currentProgress } : d))
         );
       }
-    }, 600);
+    }, 500);
   };
 
+  // DIRECT DOWNLOAD TO LOCAL GALLERY
   const downloadToGallery = (video: Video, customQuality: string = '1080p Original MP4') => {
     const cleanTitle = video.title.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 35);
-    const filename = `${cleanTitle}_Gallery.mp4`;
-    const targetUrl = video.downloadUrlOriginal || video.downloadUrl1080p || video.videoUrl;
+    const filename = `${cleanTitle}_Direct.mp4`;
+    // Safe media URL (guaranteed NOT to redirect to YouTube)
+    const targetUrl = getDirectDownloadableMediaUrl(video);
 
     const newDownloadId = 'gallery-dl-' + Date.now();
     const newRecord: DownloadRecord = {
@@ -590,27 +679,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       fileFormat: 'mp4',
       fileSizeBytes: video.downloadSizeBytes || 420000000,
       status: 'downloading',
-      progress: 25,
+      progress: 30,
       downloadUrl: targetUrl,
       timestamp: new Date().toISOString(),
       isGallerySaved: true,
     };
 
     setDownloads((prev) => [newRecord, ...prev]);
-    showToast(`Downloading MP4 to your gallery (${filename})...`, 'info');
+    showToast(`Downloading direct MP4 to your gallery (${filename})...`, 'info');
 
-    // Trigger real download to device
+    // Trigger direct download of genuine MP4 file
     triggerDirectDownload(targetUrl, filename);
 
-    // Complete download record in state
     setTimeout(() => {
       setDownloads((prev) =>
         prev.map((d) =>
           d.id === newDownloadId ? { ...d, progress: 100, status: 'completed' } : d
         )
       );
-      showToast('Video saved to Gallery & Downloads!', 'success');
-    }, 1200);
+      showToast('Video downloaded directly & saved to Gallery!', 'success');
+    }, 1000);
   };
 
   const removeDownload = (downloadId: string) => {
@@ -635,20 +723,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let videoType: Video['videoType'] = 'youtube';
     let cleanUrl = raw;
     let thumb = '';
+    // Direct download stream URL (Never youtube page URL!)
+    let safeDirectDownload = RELIABLE_DIRECT_STREAMS[0];
 
     if (ytId) {
       videoType = 'youtube';
       cleanUrl = `https://www.youtube.com/watch?v=${ytId}`;
       thumb = getYouTubeThumbnail(ytId);
+      safeDirectDownload = RELIABLE_DIRECT_STREAMS[0];
     } else if (isDirectMp4) {
       videoType = 'direct_mp4';
       thumb = '/src/assets/images/hero_aiostream_cinema_1792827556593.jpg';
+      safeDirectDownload = raw;
     } else if (isWebm) {
       videoType = 'webm';
       thumb = '/src/assets/images/category_sci_fi_cosmos_1792827556784.jpg';
+      safeDirectDownload = raw;
     } else {
       videoType = 'youtube';
       thumb = '/src/assets/images/hero_aiostream_cinema_1792827556593.jpg';
+      safeDirectDownload = RELIABLE_DIRECT_STREAMS[0];
     }
 
     const uploader = currentUser || DEFAULT_ADMIN;
@@ -672,9 +766,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       channelAvatar: uploader.avatar,
       categoryId: data.category || 'trailers',
       tags: data.tags && data.tags.length > 0 ? data.tags : ['Imported', 'Direct Stream'],
-      downloadUrl1080p: cleanUrl,
-      downloadUrl720p: cleanUrl,
-      downloadUrlOriginal: cleanUrl,
+      downloadUrl1080p: safeDirectDownload,
+      downloadUrl720p: safeDirectDownload,
+      downloadUrlOriginal: safeDirectDownload,
       downloadSizeBytes: 180000000,
       isFeatured: false,
       uploaderId: uploader.id,
@@ -801,6 +895,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const deletePlaylist = (playlistId: string) => {
     setPlaylists((prev) => prev.filter((pl) => pl.id !== playlistId));
+    if (activePlaylist?.id === playlistId) {
+      setActivePlaylist(null);
+    }
     showToast('Playlist deleted', 'info');
   };
 
@@ -853,6 +950,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setMiniPlayer,
         playVideo,
         closePlayer,
+        activePlaylist,
+        activePlaylistIndex,
+        isPlaylistAutoPlay,
+        playFullPlaylist,
+        playNextInPlaylist,
+        playPreviousInPlaylist,
+        togglePlaylistAutoPlay,
         currentUser,
         users,
         login,

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Lock, Mail, User as UserIcon, Shield, Sparkles, CheckCircle2 } from 'lucide-react';
+import { X, Lock, Mail, User as UserIcon, Shield } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
-  const { isAuthModalOpen, setIsAuthModalOpen, login, signup, showToast } = useApp();
+  const { isAuthModalOpen, setIsAuthModalOpen, login, signup } = useApp();
 
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -47,13 +47,6 @@ export const AuthModal: React.FC = () => {
     }
   };
 
-  const fillAdminCredentials = () => {
-    setEmail('admin@aiostream.com');
-    setPassword('Admin@AIOStream2026!');
-    setErrorMsg('');
-    showToast('Admin credentials filled. Click Sign In to enter portal.', 'info');
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
       <div className="relative w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-primary)]">
@@ -69,7 +62,7 @@ export const AuthModal: React.FC = () => {
               </h2>
               <p className="text-xs text-[var(--text-muted)]">
                 {mode === 'login'
-                  ? 'Access your uploaded media, studio & admin portal'
+                  ? 'Sign in to access your uploads, playlists & studio'
                   : 'Join as a creator to upload videos and save playlists'}
               </p>
             </div>
@@ -118,13 +111,13 @@ export const AuthModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Form Body - Autofill disabled per user request */}
+        {/* Form Body - Autofill disabled & password strictly hidden */}
         <form
           onSubmit={handleSubmit}
           autoComplete="off"
           className="p-6 space-y-4"
         >
-          {/* Hidden inputs to prevent aggressive browser autofill */}
+          {/* Hidden inputs to prevent browser autofill */}
           <input type="text" style={{ display: 'none' }} />
           <input type="password" style={{ display: 'none' }} />
 
@@ -203,32 +196,6 @@ export const AuthModal: React.FC = () => {
           >
             {mode === 'login' ? 'Sign In' : 'Register Account'}
           </button>
-
-          {/* Admin Credentials Helper Callout */}
-          <div className="pt-3 border-t border-[var(--border-subtle)]">
-            <div className="p-3 rounded-xl bg-[var(--accent-sage-light)]/40 border border-[var(--border-subtle)] text-[11px] space-y-1.5">
-              <div className="flex items-center justify-between text-[var(--text-primary)] font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-[var(--accent-sage)]" />
-                  Default Admin Portal Access
-                </span>
-                <button
-                  type="button"
-                  onClick={fillAdminCredentials}
-                  className="text-[var(--accent-sage)] hover:underline font-semibold"
-                >
-                  Quick Fill
-                </button>
-              </div>
-              <div className="text-[var(--text-secondary)] font-mono text-[10px] space-y-0.5">
-                <div>Email: <span className="font-bold text-[var(--text-primary)]">admin@aiostream.com</span></div>
-                <div>Default Password: <span className="font-bold text-[var(--text-primary)]">Admin@AIOStream2026!</span></div>
-              </div>
-              <p className="text-[10px] text-[var(--text-muted)] leading-tight pt-1">
-                You can change this password anytime inside the <strong>Admin Portal &gt; Settings &gt; Change Password</strong> tab.
-              </p>
-            </div>
-          </div>
         </form>
       </div>
     </div>

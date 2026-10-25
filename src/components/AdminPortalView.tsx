@@ -17,6 +17,7 @@ import {
   HardDrive,
   RefreshCw,
   Eye,
+  EyeOff,
   Lock,
 } from 'lucide-react';
 import { formatViews, formatBytes, formatDuration } from '../lib/utils';
@@ -31,6 +32,8 @@ export const AdminPortalView: React.FC = () => {
     playVideo,
     setIsAddVideoModalOpen,
     setIsSupabaseModalOpen,
+    setIsAuthModalOpen,
+    setActiveTab,
     supabaseStatus,
     updateUserStatus,
     changeAdminPassword,
@@ -41,6 +44,7 @@ export const AdminPortalView: React.FC = () => {
   const [activeAdminTab, setActiveAdminTab] = useState<'media' | 'users' | 'storage' | 'settings'>('media');
   const [mediaSearch, setMediaSearch] = useState('');
   const [selectedUserFilter, setSelectedUserFilter] = useState<string | null>(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
 
   // Change Password Form State (Autofill disabled per user request)
   const [newPassword, setNewPassword] = useState('');
@@ -85,6 +89,37 @@ export const AdminPortalView: React.FC = () => {
       setPasswordStatus({ type: 'error', message: res.message });
     }
   };
+
+  // RESTRICT ACCESS TO AUTHORIZED ADMINISTRATORS ONLY
+  if (currentUser?.role !== 'admin') {
+    return (
+      <div className="max-w-md mx-auto px-4 py-24 text-center animate-in fade-in">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--accent-sage)] shadow-sm mb-5">
+          <Lock className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold font-display text-[var(--text-primary)]">
+          Administrator Access Only
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">
+          The Admin Portal and media storage control center are restricted strictly to the site owner. Master credentials and admin controls are protected and hidden from the public.
+        </p>
+        <div className="mt-6 flex flex-col sm:flex-row gap-2.5 justify-center">
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-[var(--accent-sage)] hover:bg-[var(--accent-sage-hover)] text-white text-xs font-semibold shadow-md transition-colors"
+          >
+            Admin Sign In
+          </button>
+          <button
+            onClick={() => setActiveTab('home')}
+            className="px-4 py-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] text-xs font-medium text-[var(--text-primary)] transition-colors"
+          >
+            Return to Discover
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in">
@@ -524,24 +559,36 @@ export const AdminPortalView: React.FC = () => {
               </div>
             </div>
 
-            {/* Default credentials banner */}
-            <div className="p-4 rounded-xl bg-[var(--accent-sage-light)]/40 border border-[var(--border-subtle)] text-xs space-y-2">
+            {/* Security and Credentials Card */}
+            <div className="p-4 rounded-xl bg-[var(--accent-sage-light)]/30 border border-[var(--border-subtle)] text-xs space-y-3">
               <div className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                 <KeyRound className="w-4 h-4 text-[var(--accent-sage)]" />
-                <span>Default Admin Portal Credentials</span>
+                <span>Admin Portal Security Status</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
                 <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-                  <span className="text-[var(--text-muted)] text-[10px] block">Username / Email</span>
-                  <span className="font-bold text-[var(--text-primary)]">admin@aiostream.com</span>
+                  <span className="text-[var(--text-muted)] text-[10px] block">Authorized Admin</span>
+                  <span className="font-bold text-[var(--text-primary)]">{currentUser.email}</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-                  <span className="text-[var(--text-muted)] text-[10px] block">Default Master Password</span>
-                  <span className="font-bold text-[var(--text-primary)]">Admin@AIOStream2026!</span>
+                <div className="p-2.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-center justify-between">
+                  <div>
+                    <span className="text-[var(--text-muted)] text-[10px] block">Master Password</span>
+                    <span className="font-bold text-[var(--text-primary)] tracking-widest">
+                      {showCurrentPassword ? 'Admin@AIOStream2026!' : '••••••••••••••••'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                    title={showCurrentPassword ? "Hide password" : "Show password"}
+                  >
+                    {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-[var(--accent-sage)]" />}
+                  </button>
                 </div>
               </div>
               <p className="text-[11px] text-[var(--text-muted)]">
-                To replace this default password with your own secure password, enter it below.
+                Autofill credentials have been disabled. Your admin password is kept confidential. Enter your new password below to update it anytime.
               </p>
             </div>
 

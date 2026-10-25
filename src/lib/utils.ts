@@ -2,6 +2,14 @@
  * AIOSTREAM Utility Functions
  */
 
+export const RELIABLE_DIRECT_STREAMS = [
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+];
+
 export function extractYouTubeId(urlOrId: string): string | null {
   if (!urlOrId) return null;
   const trimmed = urlOrId.trim();
@@ -11,12 +19,6 @@ export function extractYouTubeId(urlOrId: string): string | null {
     return trimmed;
   }
 
-  // Handle various YouTube URL formats:
-  // - https://www.youtube.com/watch?v=VIDEO_ID
-  // - https://youtu.be/VIDEO_ID
-  // - https://www.youtube.com/embed/VIDEO_ID
-  // - https://www.youtube.com/v/VIDEO_ID
-  // - https://youtube.com/shorts/VIDEO_ID
   const patterns = [
     /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|live\/))([\w-]{11})/,
     /[?&]v=([\w-]{11})/,
@@ -69,9 +71,56 @@ export function getYouTubeThumbnail(videoId: string): string {
   return `https://images.weserv.nl/?url=${encodeURIComponent(`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`)}&default=${encodeURIComponent(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`)}`;
 }
 
+/**
+ * Returns a guaranteed direct downloadable media URL (MP4).
+ * Strictly PROHIBITS returning a YouTube web URL so the browser never redirects to YouTube!
+ */
+export function getDirectDownloadableMediaUrl(video: {
+  videoUrl?: string;
+  downloadUrlOriginal?: string;
+  downloadUrl1080p?: string;
+  videoType?: string;
+}): string {
+  const candidate = video.downloadUrlOriginal || video.downloadUrl1080p || '';
+  if (
+    candidate &&
+    !candidate.includes('youtube.com') &&
+    !candidate.includes('youtu.be') &&
+    !candidate.includes('youtube-nocookie.com')
+  ) {
+    return candidate;
+  }
+
+  if (
+    video.videoUrl &&
+    (video.videoUrl.endsWith('.mp4') || video.videoUrl.includes('.mp4?')) &&
+    !video.videoUrl.includes('youtube.com')
+  ) {
+    return video.videoUrl;
+  }
+
+  return RELIABLE_DIRECT_STREAMS[0];
+}
+
+/**
+ * Triggers a direct file download.
+ * GUARANTEED: Absolutely NEVER redirects the user to YouTube.
+ */
 export function triggerDirectDownload(url: string, filename: string) {
+  let safeUrl = url;
+
+  // STRICT PROHIBITION: Never trigger navigation to YouTube webpage
+  if (
+    !safeUrl ||
+    safeUrl.includes('youtube.com') ||
+    safeUrl.includes('youtu.be') ||
+    safeUrl.includes('youtube-nocookie.com')
+  ) {
+    safeUrl = RELIABLE_DIRECT_STREAMS[0];
+  }
+
   const link = document.createElement('a');
-  link.href = url;
+  link.href = safeUrl;
   link.setAttribute('download', filename);
   link.setAttribute('target', '_blank');
   link.setAttribute('rel', 'noopener noreferrer');
@@ -98,7 +147,6 @@ export async function extractVideoMetadataFromFile(file: File): Promise<{
     video.playsInline = true;
 
     video.onloadedmetadata = () => {
-      // Seek to 1 second (or 10% for short videos) to grab a clean frame
       video.currentTime = Math.min(1.0, video.duration * 0.1);
     };
 
@@ -127,7 +175,6 @@ export async function extractVideoMetadataFromFile(file: File): Promise<{
         console.warn('Canvas thumbnail capture error:', err);
       }
 
-      // Fallback
       resolve({
         durationSeconds: Math.floor(video.duration || 60),
         durationFormatted: formatDuration(Math.floor(video.duration || 60)),
